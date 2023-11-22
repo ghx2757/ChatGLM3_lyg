@@ -12,9 +12,11 @@ from transformers import AutoModel, AutoTokenizer, AutoConfig
 from conversation import Conversation
 
 TOOL_PROMPT = 'Answer the following questions as best as you can. You have access to the following tools:'
+# 已在环境变量中进行了设定，模型路径：D:\code\ChatGLM3\chatglm3-6b
 
 MODEL_PATH = os.environ.get('MODEL_PATH', 'THUDM/chatglm3-6b')
 PT_PATH = os.environ.get('PT_PATH', None)
+# PT_PATH = 'D:/code/ChatGLM3_lyg/finetune_demo/output/haier_hzy_m_1121'
 TOKENIZER_PATH = os.environ.get("TOKENIZER_PATH", MODEL_PATH)
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -38,6 +40,7 @@ DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 @st.cache_resource
 def get_client() -> Client:
+    print(f'PT_PATH==>{PT_PATH}')
     client = HFClient(MODEL_PATH, TOKENIZER_PATH, PT_PATH, DEVICE)
     return client
 
@@ -136,6 +139,7 @@ class HFClient(Client):
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)
 
         if pt_checkpoint is not None:
+            print('★☆---pt_checkpoint is got---☆★')
             config = AutoConfig.from_pretrained(model_path, trust_remote_code=True, pre_seq_len=128)
             self.model = AutoModel.from_pretrained(model_path, trust_remote_code=True, config=config)
             prefix_state_dict = torch.load(os.path.join(pt_checkpoint, "pytorch_model.bin"))
@@ -146,6 +150,7 @@ class HFClient(Client):
             print("Loaded from pt checkpoints", new_prefix_state_dict.keys())
             self.model.transformer.prefix_encoder.load_state_dict(new_prefix_state_dict)
         else:
+            print('XX---pt_checkpoint is None---XX')
             self.model = AutoModel.from_pretrained(model_path, trust_remote_code=True)
 
         self.model = self.model.to(DEVICE).eval() if 'cuda' in DEVICE else self.model.float().to(DEVICE).eval()

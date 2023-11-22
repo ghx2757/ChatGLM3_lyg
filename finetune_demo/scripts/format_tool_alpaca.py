@@ -10,7 +10,7 @@ parser.add_argument("--path", type=str, required=True)
 
 args = parser.parse_args()
 
-with open(args.path) as f:
+with open(args.path,encoding='utf-8') as f:
     data = json.load(f)
 
 train_examples = []
@@ -55,6 +55,6 @@ print("conversation distribution:", Counter([len(e["conversations"]) for e in tr
 
 os.makedirs("formatted_data", exist_ok=True)
 
-with open("formatted_data/tool_alpaca.jsonl", "w") as f:
+with open("formatted_data/tool_alpaca.jsonl", "w",encoding='utf-8') as f:
     for e in train_examples:
         f.write(json.dumps(e, ensure_ascii=False) + "\n")

@@ -2,10 +2,12 @@ import argparse
 from transformers import AutoConfig, AutoModel, AutoTokenizer
 import torch
 import os
+MODEL_PATH = os.environ.get('MODEL_PATH', 'THUDM/chatglm3-6b')
+PT_CHECKPOINT = 'D:/code/ChatGLM3/finetune_demo/output/advertise_gen_pt-20231113-175436-128-2e-2'
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--pt-checkpoint", type=str, default=None, help="The checkpoint path")
-parser.add_argument("--model", type=str, default=None, help="main model weights")
+parser.add_argument("--pt-checkpoint", type=str, default=PT_CHECKPOINT, help="The checkpoint path")
+parser.add_argument("--model", type=str, default=MODEL_PATH, help="main model weights")
 parser.add_argument("--tokenizer", type=str, default=None, help="main model weights")
 parser.add_argument("--pt-pre-seq-len", type=int, default=128, help="The pre-seq-len used in p-tuning")
 parser.add_argument("--device", type=str, default="cuda")

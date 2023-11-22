@@ -42,6 +42,8 @@ from arguments import ModelArguments, DataTrainingArguments
 from preprocess_utils import sanity_check, MultiTurnDataset, InputOutputDataset
 
 logger = logging.getLogger(__name__)
+MODEL_PATH = os.environ.get('MODEL_PATH', 'THUDM/chatglm3-6b')
+
 
 def main():
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, Seq2SeqTrainingArguments))
@@ -51,6 +53,8 @@ def main():
         model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+
+    model_args.model_name_or_path = MODEL_PATH
 
     # Setup logging
     logging.basicConfig(
@@ -113,6 +117,14 @@ def main():
         if data_args.train_file.endswith(".json"):
             train_data = json.load(f)
         elif data_args.train_file.endswith(".jsonl"):
+            # 检测数据集用的：
+            # train_data = []
+            # i = 1
+            # for line in f:
+            #     train_data.append(json.loads(line))
+            #     print("进来了！")
+            #     print(i)                
+            #     i += 1  
             train_data = [json.loads(line) for line in f]
 
     if data_args.train_format == "multi-turn":

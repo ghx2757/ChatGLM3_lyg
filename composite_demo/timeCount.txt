@@ -77,3 +77,4 @@
 "prompt_text字符长度：3;    output_text字符长度：170    推理时长：15.364612579345703"
 "prompt_text字符长度：2;    output_text字符长度：141    推理时长：12.404563426971436"
 "prompt_text字符长度：17;    output_text字符长度：371    推理时长：41.31470060348511"
+"prompt_text字符长度：2;    output_text字符长度：116    推理时长：5.079179525375366"
