@@ -10,7 +10,7 @@ parser.add_argument("--path", type=str, required=True)
 
 args = parser.parse_args()
 
-with open(args.path) as f:
+with open(args.path,encoding='utf-8') as f:
     data = [json.loads(line) for line in f]
 
 train_examples = [{
@@ -20,6 +20,6 @@ train_examples = [{
 
 os.makedirs("formatted_data", exist_ok=True)
 
-with open("formatted_data/advertise_gen.jsonl", "w") as f:
+with open("formatted_data/advertise_gen.jsonl", "w",encoding='utf-8') as f:
     for e in train_examples:
         f.write(json.dumps(e, ensure_ascii=False) + "\n")
