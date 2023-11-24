@@ -9,3 +9,5 @@ AdvertiseGen/
 *.gz
 *.idea
 chatglm3-6b/
+finetune_chatmodel_demo/formatted_data/
+finetune_chatmodel_demo/output/

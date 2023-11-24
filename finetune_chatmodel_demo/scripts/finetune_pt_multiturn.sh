@@ -8,14 +8,14 @@ NUM_GPUS=1
 MAX_SEQ_LEN=2048
 DEV_BATCH_SIZE=1
 GRAD_ACCUMULARION_STEPS=16
-MAX_STEP=800
-SAVE_INTERVAL=200
+MAX_STEP=300
+SAVE_INTERVAL=100
 
 DATESTR=`date +%Y%m%d-%H%M%S`
 RUN_NAME=data_haier_m
 
 BASE_MODEL_PATH=D:/code/ChatGLM3_lyg/chatglm3-6b/ # 模型路径
-DATASET_PATH=formatted_data/data_ljq_m.jsonl
+DATASET_PATH=formatted_data/data_hsw_m.jsonl
 OUTPUT_DIR=output/${RUN_NAME}-${DATESTR}-${PRE_SEQ_LEN}-${LR}
 
 mkdir -p $OUTPUT_DIR
@@ -33,5 +33,5 @@ torchrun --standalone --nnodes=1 --nproc_per_node=$NUM_GPUS finetune.py \
     --logging_steps 1 \
     --save_steps $SAVE_INTERVAL \
     --learning_rate $LR \
-        --use_mps_device 1\
+    --use_mps_device 1\
     --pre_seq_len $PRE_SEQ_LEN 2>&1 | tee ${OUTPUT_DIR}/train.log
