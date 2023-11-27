@@ -87,8 +87,8 @@ def main(top_p: float, temperature: float, system_prompt: str, prompt_text: str,
             markdown_placeholder.markdown(postprocess_text(output_text + '▌'))
         
         # 计算推理时间
-        out_path = os.path.join(os.getcwd(), 'timeCount.txt')   
-        count_time(start, out_path, prompt_text, output_text)
+        # out_path = os.path.join(os.getcwd(), 'timeCount.txt')   
+        # count_time(start, out_path, prompt_text, output_text)
 
         append_conversation(Conversation(
             Role.ASSISTANT,
