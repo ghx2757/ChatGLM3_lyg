@@ -2,7 +2,7 @@
 
 set -ex
 
-PRE_SEQ_LEN=128
+PRE_SEQ_LEN=128  # 要改此值需同步fastchat.serve.model_worker文件的parser.add_argument("--load_kwargs",type=dict,default={})default参数：
 LR=2e-2
 NUM_GPUS=1
 MAX_SEQ_LEN=2048
