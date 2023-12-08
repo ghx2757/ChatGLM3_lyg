@@ -3,6 +3,7 @@ from streamlit.delta_generator import DeltaGenerator
 
 from client import get_client
 from conversation import postprocess_text, preprocess_text, Conversation, Role
+
 import time
 import json
 import os
@@ -30,7 +31,12 @@ def append_conversation(
     conversation.show(placeholder)
 
 
-def main(top_p: float, temperature: float, system_prompt: str, prompt_text: str, repetition_penalty: float):
+def main(top_p: float,
+         temperature: float,
+         system_prompt: str,
+         prompt_text: str,
+         repetition_penalty: float,
+         max_new_tokens: int):
     placeholder = st.empty()
     with placeholder.container():
         if 'chat_history' not in st.session_state:
@@ -66,7 +72,7 @@ def main(top_p: float, temperature: float, system_prompt: str, prompt_text: str,
                 tools=None,
                 history=history,
                 do_sample=True,
-                max_length=MAX_LENGTH,
+                max_new_tokens=max_new_tokens,
                 temperature=temperature,
                 top_p=top_p,
                 stop_sequences=[str(Role.USER)],
