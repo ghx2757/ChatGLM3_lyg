@@ -15,9 +15,12 @@ TOOL_PROMPT = 'Answer the following questions as best as you can. You have acces
 # 已在环境变量中进行了设定，模型路径：D:\code\ChatGLM3\chatglm3-6b
 
 MODEL_PATH = os.environ.get('MODEL_PATH', 'THUDM/chatglm3-6b')
-print(MODEL_PATH)
+# MODEL_PATH = '/home/lyg/code/model/ChatGLM3-6b/llama-lora/train_2023-12-06-17-36-11/peft_merge'
+print(f'MODEL_PATH==>{MODEL_PATH}')
+
 PT_PATH = os.environ.get('PT_PATH', None)
 # PT_PATH = 'D:/code/ChatGLM3_lyg/finetune_chatmodel_demo/output/data_haier_m-20231123-174423-128-2e-2'
+
 PRE_SEQ_LEN = int(os.environ.get("PRE_SEQ_LEN", 128))  # mark sure your have pt_path with finetune model
 
 TOKENIZER_PATH = os.environ.get("TOKENIZER_PATH", MODEL_PATH)
@@ -44,7 +47,7 @@ DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 @st.cache_resource
 def get_client() -> Client:
-    print(f'PT_PATH==>{PT_PATH}')
+    print(f'PT_PATH==>{PT_PATH}\n')
     client = HFClient(MODEL_PATH, TOKENIZER_PATH, PT_PATH, DEVICE)
     return client
 

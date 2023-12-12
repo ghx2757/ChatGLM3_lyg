@@ -2,19 +2,19 @@
 
 set -ex
 
-PRE_SEQ_LEN=128  # 要改此值需同步fastchat.serve.model_worker文件的parser.add_argument("--load_kwargs",type=dict,default={})default参数：
+PRE_SEQ_LEN=128  
 LR=2e-2
 NUM_GPUS=1
 MAX_SEQ_LEN=2048
 DEV_BATCH_SIZE=1
 GRAD_ACCUMULARION_STEPS=16
-MAX_STEP=300
+MAX_STEP=200
 SAVE_INTERVAL=100
 
 DATESTR=`date +%Y%m%d-%H%M%S`
-RUN_NAME=data_haier_m
+RUN_NAME=data_hsw_m
 
-BASE_MODEL_PATH=D:/code/ChatGLM3_lyg/chatglm3-6b/ # 模型路径
+BASE_MODEL_PATH=/home/lyg/code/model/ChatGLM3-6b/chatglm3-6b # 模型路径
 DATASET_PATH=formatted_data/data_hsw_m.jsonl
 OUTPUT_DIR=output/${RUN_NAME}-${DATESTR}-${PRE_SEQ_LEN}-${LR}
 
