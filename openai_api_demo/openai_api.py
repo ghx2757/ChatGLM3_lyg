@@ -437,4 +437,4 @@ if __name__ == "__main__":
 
     model = model.to(DEVICE).eval() if 'cuda' in DEVICE else model.float().to(DEVICE).eval()
 
-    uvicorn.run(app, host='0.0.0.0', port=5100, workers=1)
+    uvicorn.run(app, host='127.0.0.1', port=5100, workers=1)

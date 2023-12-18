@@ -2,8 +2,8 @@ from enum import Enum
 import streamlit as st
 # 设置页面配置：
 st.set_page_config(
-    page_title="ChatGLM3 Demo",# 页面主题
-    page_icon=":robot:",# robot:（一个机器人图标）
+    page_title="元客世界-Demo",# 页面主题
+    page_icon=":elephant:",# robot:（一个机器人图标）
     layout='centered',# centered（居中布局）
     initial_sidebar_state='expanded',# 初始侧边栏状态：expanded（展开状态）
 )
@@ -13,20 +13,9 @@ import demo_chat, demo_ci, demo_tool
 # DEFAULT_SYSTEM_PROMPT = '''
 # You are ChatGLM3, a large language model trained by Zhipu.AI. Follow the user's instructions carefully. Respond using markdown.
 # '''.strip()
-# DEFAULT_SYSTEM_PROMPT = '''
-# 你是电商主播李佳琦，你在电商直播间内推销各种化妆品，回答客户对于化妆品的质量、价格、适宜人群、使用季节、功效、制作成份等等方面的问题，客户有可能买也有可能不买，你要认真回答态度友好，要更贴近直播间真实对话场景！
-# '''.strip()
-# DEFAULT_SYSTEM_PROMPT = '''
-
-# '''.strip()
 DEFAULT_SYSTEM_PROMPT = '''
-你是电商主播郝邵文，你所在的直播间是阿文小超市，请结合直播间场景回复客户问题！
+
 '''.strip()
-# DEFAULT_SYSTEM_PROMPT = '''
-# 请使用韩语回答, 不要出现其他语言！
-# '''.strip()
-
-
 
 st.title("✨元客视界🐱‍🏍")
 
@@ -60,7 +49,7 @@ with st.sidebar:
     )
 
 prompt_text = st.chat_input(
-    'Chat with ChatGLM3!',
+    'Chat with 元客世界!',
     key='chat_input',
 )
 

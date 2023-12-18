@@ -12,7 +12,6 @@ from transformers import AutoModel, AutoTokenizer, AutoConfig
 from conversation import Conversation
 
 TOOL_PROMPT = 'Answer the following questions as best as you can. You have access to the following tools:'
-# 已在环境变量中进行了设定，模型路径：D:\code\ChatGLM3\chatglm3-6b
 
 MODEL_PATH = os.environ.get('MODEL_PATH', 'THUDM/chatglm3-6b')
 # MODEL_PATH = '/home/lyg/code/model/ChatGLM3-6b/llama-lora/train_2023-12-06-17-36-11/peft_merge'
@@ -79,7 +78,7 @@ def stream_chat(self, tokenizer, query: str,
 
     class InvalidScoreLogitsProcessor(LogitsProcessor):
         def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
-            if torch.isnan(scores).any() or torch.isinf(scores).any():
+            if torch.isnan(scores).any() or torch.isinf(scores).any(): # 有一个score为0或者i非法都不可以
                 scores.zero_()
                 scores[..., 5] = 5e4
             return scores
@@ -89,6 +88,7 @@ def stream_chat(self, tokenizer, query: str,
     if logits_processor is None:
         logits_processor = LogitsProcessorList()
     logits_processor.append(InvalidScoreLogitsProcessor())
+    
     eos_token_id = [tokenizer.eos_token_id, tokenizer.get_command("<|user|>"),
                     tokenizer.get_command("<|observation|>")]
     gen_kwargs = {"max_new_tokens": max_new_tokens,
