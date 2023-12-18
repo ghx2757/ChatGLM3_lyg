@@ -8,6 +8,7 @@ ToolAlpaca/
 AdvertiseGen/
 *.gz
 *.idea
+.DS_Store
 chatglm3-6b/
 finetune_chatmodel_demo/output/
 chatglm3-6b-32k/
