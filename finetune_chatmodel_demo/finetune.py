@@ -48,13 +48,14 @@ MODEL_PATH = os.environ.get('MODEL_PATH', 'THUDM/chatglm3-6b')
 def main():
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, Seq2SeqTrainingArguments))
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
-        # If we pass only one argument to the script and it's the path to a json file,
-        # let's parse it to get our arguments.
         model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
     model_args.model_name_or_path = MODEL_PATH
+
+    training_args.ddp_find_unused_parameters = False
+    training_args.save_safetensors = False
 
     # Setup logging
     logging.basicConfig(
@@ -64,12 +65,10 @@ def main():
     )
 
     if training_args.should_log:
-        # The default of training_args.log_level is passive, so we set log level at info here to have that default.
         transformers.utils.logging.set_verbosity_info()
 
     log_level = training_args.get_process_log_level()
     logger.setLevel(log_level)
-    # datasets.utils.logging.set_verbosity(log_level)
     transformers.utils.logging.set_verbosity(log_level)
     transformers.utils.logging.enable_default_handler()
     transformers.utils.logging.enable_explicit_format()
@@ -88,6 +87,7 @@ def main():
     config = AutoConfig.from_pretrained(model_args.model_name_or_path, trust_remote_code=True)
     config.pre_seq_len = model_args.pre_seq_len
     config.prefix_projection = model_args.prefix_projection
+    config.use_cache = False
 
     tokenizer = AutoTokenizer.from_pretrained(model_args.model_name_or_path, trust_remote_code=True)
 
@@ -112,7 +112,7 @@ def main():
     else:
         # Finetune
         model = model.float()
-    
+
     with open(data_args.train_file, "r", encoding="utf-8") as f:
         if data_args.train_file.endswith(".json"):
             train_data = json.load(f)
@@ -172,6 +172,7 @@ def main():
     trainer.train(resume_from_checkpoint=checkpoint)
     trainer.save_model()  # Saves the tokenizer too for easy upload
     trainer.save_state()
+
 
 if __name__ == "__main__":
     main()
