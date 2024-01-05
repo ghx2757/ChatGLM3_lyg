@@ -1,14 +1,16 @@
 """
 This script implements an API for the ChatGLM3-6B model,
 formatted similarly to OpenAI's API (https://platform.openai.com/docs/api-reference/chat).
-It's designed to be run as a web server using FastAPI and uvicorn, making the ChatGLM3-6B model accessible through HTTP requests.
+It's designed to be run as a web server using FastAPI and uvicorn,
+making the ChatGLM3-6B model accessible through OpenAI Client.
 
 Key Components and Features:
-- Model and Tokenizer Setup: Configures the model and tokenizer paths and loads them, utilizing GPU acceleration if available.
+- Model and Tokenizer Setup: Configures the model and tokenizer paths and loads them.
 - FastAPI Configuration: Sets up a FastAPI application with CORS middleware for handling cross-origin requests.
 - API Endpoints:
   - "/v1/models": Lists the available models, specifically ChatGLM3-6B.
   - "/v1/chat/completions": Processes chat completion requests with options for streaming and regular responses.
+  - "/v1/embeddings": Processes Embedding request of a list of text inputs.
 - Token Limit Caution: In the OpenAI API, 'max_tokens' is equivalent to HuggingFace's 'max_new_tokens', not 'max_length'.
 For instance, setting 'max_tokens' to 8192 for a 6b model would result in an error due to the model's inability to output
 that many tokens after accounting for the history and prompt tokens.
@@ -16,24 +18,29 @@ that many tokens after accounting for the history and prompt tokens.
 - Pydantic Models: Defines structured models for requests and responses, enhancing API documentation and type safety.
 - Main Execution: Initializes the model and tokenizer, and starts the FastAPI app on the designated host and port.
 
-Note: This script doesn't include the setup for special tokens or multi-GPU support by default.
-Users need to configure their special tokens and can enable multi-GPU support as per the provided instructions.
+Note:
+    This script doesn't include the setup for special tokens or multi-GPU support by default.
+    Users need to configure their special tokens and can enable multi-GPU support as per the provided instructions.
+    Embedding Models only support in One GPU.
 
 """
 
 import os
 import time
-from contextlib import asynccontextmanager
-from typing import List, Literal, Optional, Union
-
+import tiktoken
 import torch
 import uvicorn
-from fastapi import FastAPI, HTTPException
+
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
+
+from contextlib import asynccontextmanager
+from typing import List, Literal, Optional, Union
 from loguru import logger
 from pydantic import BaseModel, Field
 from transformers import AutoTokenizer, AutoModel
 from utils import process_response, generate_chatglm3, generate_stream_chatglm3
+from sentence_transformers import SentenceTransformer
 
 from transformers import AutoModel, AutoTokenizer, AutoConfig
 
@@ -42,13 +49,18 @@ from sse_starlette.sse import EventSourceResponse
 # Set up limit request time
 EventSourceResponse.DEFAULT_PING_INTERVAL = 1000
 
+# set LLM path
 MODEL_PATH = os.environ.get('MODEL_PATH', 'THUDM/chatglm3-6b')
 TOKENIZER_PATH = os.environ.get("TOKENIZER_PATH", MODEL_PATH)
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 PRE_SEQ_LEN = int(os.environ.get("PRE_SEQ_LEN", 128))
 
+# set Embedding Model path
+EMBEDDING_PATH = os.environ.get('EMBEDDING_PATH', 'BAAI/bge-large-zh-v1.5')
+
+
 @asynccontextmanager
-async def lifespan(app: FastAPI):  # collects GPU memory
+async def lifespan(app: FastAPI):
     yield
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
@@ -99,6 +111,27 @@ class DeltaMessage(BaseModel):
     function_call: Optional[FunctionCallResponse] = None
 
 
+## for Embedding
+class EmbeddingRequest(BaseModel):
+    input: List[str]
+    model: str
+
+
+class EmbeddingResponse(BaseModel):
+    data: list
+    model: str
+    object: str
+    usage: dict
+
+
+# for ChatCompletionRequest
+
+class UsageInfo(BaseModel):
+    prompt_tokens: int = 0
+    total_tokens: int = 0
+    completion_tokens: Optional[int] = 0
+
+
 class ChatCompletionRequest(BaseModel):
     model: str
     messages: List[ChatMessage]
@@ -106,7 +139,7 @@ class ChatCompletionRequest(BaseModel):
     top_p: Optional[float] = 0.8
     max_tokens: Optional[int] = None
     stream: Optional[bool] = False
-    functions: Optional[Union[dict, List[dict]]] = None
+    tools: Optional[Union[dict, List[dict]]] = None
     # Additional parameters
     repetition_penalty: Optional[float] = 1.1
 
@@ -115,6 +148,7 @@ class ChatCompletionResponseChoice(BaseModel):
     index: int
     message: ChatMessage
     finish_reason: Literal["stop", "length", "function_call"]
+    # no need for logprobs
 
 
 class ChatCompletionResponseStreamChoice(BaseModel):
@@ -123,24 +157,60 @@ class ChatCompletionResponseStreamChoice(BaseModel):
     finish_reason: Optional[Literal["stop", "length", "function_call"]]
 
 
-class UsageInfo(BaseModel):
-    prompt_tokens: int = 0
-    total_tokens: int = 0
-    completion_tokens: Optional[int] = 0
-
-
 class ChatCompletionResponse(BaseModel):
-    model: str
     object: Literal["chat.completion", "chat.completion.chunk"]
     choices: List[Union[ChatCompletionResponseChoice, ChatCompletionResponseStreamChoice]]
     created: Optional[int] = Field(default_factory=lambda: int(time.time()))
     usage: Optional[UsageInfo] = None
 
 
+@app.get("/health")
+async def health() -> Response:
+    """Health check."""
+    return Response(status_code=200)
+
+
+@app.post("/v1/embeddings", response_model=EmbeddingResponse)
+async def get_embeddings(request: EmbeddingRequest):
+    embeddings = [embedding_model.encode(text) for text in request.input]
+    embeddings = [embedding.tolist() for embedding in embeddings]
+
+    def num_tokens_from_string(string: str) -> int:
+        """
+        Returns the number of tokens in a text string.
+        use cl100k_base tokenizer
+        """
+        encoding = tiktoken.get_encoding('cl100k_base')
+        num_tokens = len(encoding.encode(string))
+        return num_tokens
+
+    response = {
+        "data": [
+            {
+                "object": "embedding",
+                "embedding": embedding,
+                "index": index
+            }
+            for index, embedding in enumerate(embeddings)
+        ],
+        "model": request.model,
+        "object": "list",
+        "usage": {
+            "prompt_tokens": sum(len(text.split()) for text in request.input),  # how many characters in prompt
+            "total_tokens": sum(num_tokens_from_string(text) for text in request.input),  # how many tokens (encoding)
+        },
+    }
+    return response
+
+
 @app.get("/v1/models", response_model=ModelList)
 async def list_models():
-    model_card = ModelCard(id="chatglm3-6b")
-    return ModelList(data=[model_card])
+    model_card = ModelCard(
+        id="chatglm3-6b"
+    )
+    return ModelList(
+        data=[model_card]
+    )
 
 
 @app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
@@ -158,9 +228,8 @@ async def create_chat_completion(request: ChatCompletionRequest):
         echo=False,
         stream=request.stream,
         repetition_penalty=request.repetition_penalty,
-        functions=request.functions,
+        tools=request.tools,
     )
-
     logger.debug(f"==== request ====\n{gen_params}")
 
     if request.stream:
@@ -175,7 +244,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
         logger.debug(f"First result output：\n{output}")
 
         function_call = None
-        if output and request.functions:
+        if output and request.tools:
             try:
                 function_call = process_response(output, use_tool=True)
             except:
@@ -187,7 +256,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
 
             """
             In this demo, we did not register any tools.
-            You can use the tools that have been implemented in our `tool_using` and implement your own streaming tool implementation here.
+            You can use the tools that have been implemented in our `tools_using_demo` and implement your own streaming tool implementation here.
             Similar to the following method:
                 function_args = json.loads(function_call.arguments)
                 tool_response = dispatch_tool(tool_name: str, tool_params: dict)
@@ -223,9 +292,10 @@ async def create_chat_completion(request: ChatCompletionRequest):
     if response["text"].startswith("\n"):
         response["text"] = response["text"][1:]
     response["text"] = response["text"].strip()
+
     usage = UsageInfo()
     function_call, finish_reason = None, "stop"
-    if request.functions:
+    if request.tools:
         try:
             function_call = process_response(response["text"], use_tool=True)
         except:
@@ -251,7 +321,12 @@ async def create_chat_completion(request: ChatCompletionRequest):
     task_usage = UsageInfo.model_validate(response["usage"])
     for usage_key, usage_value in task_usage.model_dump().items():
         setattr(usage, usage_key, getattr(usage, usage_key) + usage_value)
-    return ChatCompletionResponse(model=request.model, choices=[choice_data], object="chat.completion", usage=usage)
+
+    return ChatCompletionResponse(
+        choices=[choice_data],
+        object="chat.completion",
+        usage=usage
+    )
 
 
 async def predict(model_id: str, params: dict):
@@ -408,7 +483,7 @@ def contains_custom_function(value: str) -> bool:
     """
     Determine whether 'function_call' according to a special function prefix.
 
-    For example, the functions defined in "tool_using/tool_register.py" are all "get_xxx" and start with "get_"
+    For example, the functions defined in "tools_using_demo/tool_register.py" are all "get_xxx" and start with "get_"
 
     [Note] This is not a rigorous judgment method, only for reference.
 
@@ -453,6 +528,9 @@ if __name__ == "__main__":
                 trust_remote_code=True,
                 device_map="auto"
             ).eval())
+    # load Embedding
+    embedding_model = SentenceTransformer(EMBEDDING_PATH, device="cuda")
+    uvicorn.run(app, host='0.0.0.0', port=8000, workers=1)
 
     model = model.to(DEVICE).eval() if 'cuda' in DEVICE else model.float().to(DEVICE).eval()
 
