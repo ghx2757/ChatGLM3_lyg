@@ -16,11 +16,10 @@ from conversation import Conversation
 TOOL_PROMPT = 'Answer the following questions as best as you can. You have access to the following tools:'
 
 MODEL_PATH = os.environ.get('MODEL_PATH', 'THUDM/chatglm3-6b')
-# MODEL_PATH = '/home/lyg/code/model/ChatGLM3-6b/llama-lora/train_2023-12-06-17-36-11/peft_merge'
 print(f'MODEL_PATH==>{MODEL_PATH}')
 
 PT_PATH = os.environ.get('PT_PATH', None)
-# PT_PATH = 'D:/code/ChatGLM3_lyg/finetune_chatmodel_demo/output/data_haier_m-20231123-174423-128-2e-2'
+# PT_PATH = '/home/lyg/code/ChatGLM3_lyg/finetune_chatmodel_demo/output/data_hsw_m-20231212-122142-128-2e-2'
 PRE_SEQ_LEN = int(os.environ.get("PRE_SEQ_LEN", 128))
 TOKENIZER_PATH = os.environ.get("TOKENIZER_PATH", MODEL_PATH)
 
@@ -42,7 +41,7 @@ class Client(Protocol):
 
 
 def stream_chat(
-        self, tokenizer, query: str,
+        self, tokenizer, query: str, # 这里的self传入的是modle，我推测
         history: list[tuple[str, str]] = None,
         role: str = "user",
         past_key_values=None,
@@ -55,6 +54,7 @@ def stream_chat(
         return_past_key_values=False,
         **kwargs
 ):
+    # 这段代码的目的是在检测到scores中存在NaN或无穷大的值时，将所有的scores设置为0，并将第五个元素设置为一个非常大的值。这样做的原因可能是为了在出现这种异常情况时，强制模型选择第五个词汇作为输出，或者防止模型产生无效的输出。
     class InvalidScoreLogitsProcessor(LogitsProcessor):
         def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
             if torch.isnan(scores).any() or torch.isinf(scores).any(): # 有一个score为0或者i非法都不可以
@@ -72,6 +72,7 @@ def stream_chat(
         logits_processor = LogitsProcessorList()
     logits_processor.append(InvalidScoreLogitsProcessor())
     
+    # 三个控制生成的结束token对应ID
     eos_token_id = [tokenizer.eos_token_id, tokenizer.get_command("<|user|>"),
                     tokenizer.get_command("<|observation|>")]
     gen_kwargs = {"max_new_tokens": max_new_tokens,
@@ -84,12 +85,16 @@ def stream_chat(
                   "num_beams": num_beams,
                   **kwargs
                   }
-
+    # 过去 的 K、V 这块需要理解
     if past_key_values is None:
         inputs = tokenizer.build_chat_input(query, history=history, role=role)
     else:
         inputs = tokenizer.build_chat_input(query, role=role)
+
+    print(f"\033[32mclient文件中--inputs：\n{inputs}\033[0m")
+
     inputs = inputs.to(self.device)
+    # 根据past_key_values来整理一下attention_mask
     if past_key_values is not None:
         past_length = past_key_values[0][0].shape[0]
         if self.transformer.pre_seq_len is not None:
@@ -100,6 +105,7 @@ def stream_chat(
         inputs['attention_mask'] = attention_mask
     history.append({"role": role, "content": query})
     input_sequence_length = inputs['input_ids'].shape[1]
+    # 这里的加号的意思是seq_length规定的是输入输出的总长
     if input_sequence_length + max_new_tokens >= self.config.seq_length:
         yield "Current input sequence length {} plus max_new_tokens {} is too long. The maximum model sequence length is {}. You may adjust the generation parameter to enable longer chat history.".format(
             input_sequence_length, max_new_tokens, self.config.seq_length
@@ -131,8 +137,9 @@ class HFClient(Client):
     def __init__(self, model_path: str, tokenizer_path: str, pt_checkpoint: str = None):
         self.model_path = model_path
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)
-
+        
         if pt_checkpoint is not None and os.path.exists(pt_checkpoint):
+            print(f'\n❀ ❀ ❀ pt_checkpoint==>{pt_checkpoint}')
             config = AutoConfig.from_pretrained(
                 model_path,
                 trust_remote_code=True,
@@ -152,13 +159,13 @@ class HFClient(Client):
             print("Loaded from pt checkpoints", new_prefix_state_dict.keys())
             self.model.transformer.prefix_encoder.load_state_dict(new_prefix_state_dict)
         else:
+            print(f'\npt_checkpoint==> None')
             self.model = (
                 AutoModel.from_pretrained(
                     MODEL_PATH,
                     trust_remote_code=True,
                     device_map="auto"
                 ).eval())
-            # plus .quantized() if you want to use quantized model
 
     def generate_stream(
             self,

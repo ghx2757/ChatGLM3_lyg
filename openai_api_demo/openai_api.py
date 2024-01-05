@@ -44,7 +44,8 @@ EventSourceResponse.DEFAULT_PING_INTERVAL = 1000
 
 MODEL_PATH = os.environ.get('MODEL_PATH', 'THUDM/chatglm3-6b')
 TOKENIZER_PATH = os.environ.get("TOKENIZER_PATH", MODEL_PATH)
-
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+PRE_SEQ_LEN = int(os.environ.get("PRE_SEQ_LEN", 128))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # collects GPU memory
@@ -418,34 +419,40 @@ def contains_custom_function(value: str) -> bool:
 
 
 if __name__ == "__main__":
+    model_path = MODEL_PATH
+    tokenizer_path = TOKENIZER_PATH
+    # pt_checkpoint = '/home/lyg/code/ChatGLM3_lyg/finetune_chatmodel_demo/output/data_hsw_m-20231212-122142-128-2e-2'
+    pt_checkpoint = None
 
-    tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_PATH, trust_remote_code=True)
-    if 'cuda' in DEVICE:  # AMD, NVIDIA GPU can use Half Precision
-        model = AutoModel.from_pretrained(MODEL_PATH, trust_remote_code=True).to(DEVICE).eval()
-
-        # Multi-GPU support, use the following two lines instead of the above line, num gpus to your actual number of graphics cards
-        # from utils import load_model_on_gpus
-        # model = load_model_on_gpus(MODEL_PATH, num_gpus=2)
-
-    else:  # CPU, Intel GPU and other GPU can use Float16 Precision Only
-        model = AutoModel.from_pretrained(MODEL_PATH, trust_remote_code=True).float().to(DEVICE).eval()
-    uvicorn.run(app, host='0.0.0.0', port=8000, workers=1)
-
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)
-    if pt_checkpoint is not None:
-        print(f'\n❀ ❀ ❀ pt_checkpoint==>{pt_checkpoint}')
-        config = AutoConfig.from_pretrained(model_path, trust_remote_code=True, pre_seq_len=128)
-        model = AutoModel.from_pretrained(model_path, trust_remote_code=True, config=config)
-        prefix_state_dict = torch.load(os.path.join(pt_checkpoint, "pytorch_model.bin"))
-        new_prefix_state_dict = {}
-        for k, v in prefix_state_dict.items():
-            if k.startswith("transformer.prefix_encoder."):
-                new_prefix_state_dict[k[len("transformer.prefix_encoder."):]] = v
-        print("Loaded from pt checkpoints", new_prefix_state_dict.keys())
-        model.transformer.prefix_encoder.load_state_dict(new_prefix_state_dict)
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)    
+    if pt_checkpoint is not None and os.path.exists(pt_checkpoint):
+            print(f'\n❀ ❀ ❀ pt_checkpoint==>{pt_checkpoint}')
+            config = AutoConfig.from_pretrained(
+                model_path,
+                trust_remote_code=True,
+                pre_seq_len=PRE_SEQ_LEN
+            )
+            model = AutoModel.from_pretrained(
+                model_path,
+                trust_remote_code=True,
+                config=config,
+                device_map="auto"
+            ).eval()
+            prefix_state_dict = torch.load(os.path.join(pt_checkpoint, "pytorch_model.bin"))
+            new_prefix_state_dict = {}
+            for k, v in prefix_state_dict.items():
+                if k.startswith("transformer.prefix_encoder."):
+                    new_prefix_state_dict[k[len("transformer.prefix_encoder."):]] = v
+            print("Loaded from pt checkpoints", new_prefix_state_dict.keys())
+            model.transformer.prefix_encoder.load_state_dict(new_prefix_state_dict)
     else:
         print(f'\npt_checkpoint==> None')
-        model = AutoModel.from_pretrained(model_path, trust_remote_code=True)
+        model = (
+            AutoModel.from_pretrained(
+                MODEL_PATH,
+                trust_remote_code=True,
+                device_map="auto"
+            ).eval())
 
     model = model.to(DEVICE).eval() if 'cuda' in DEVICE else model.float().to(DEVICE).eval()
 

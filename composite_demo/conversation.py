@@ -50,12 +50,12 @@ class Role(Enum):
 
 @dataclass
 class Conversation:
-    role: Role # 对话中系统的角色，可以是 Role.SYSTEM、Role.USER、Role.ASSISTANT 或 Role.OBSERVATION
+    role: Role 
     content: str
     tool: str | None = None
     image: Image | None = None
 
-    def __str__(self) -> str:# 这块对应了prompt的格式
+    def __str__(self) -> str:
         print(self.role, self.content, self.tool)
         match self.role:
             case Role.SYSTEM | Role.USER | Role.ASSISTANT | Role.OBSERVATION:

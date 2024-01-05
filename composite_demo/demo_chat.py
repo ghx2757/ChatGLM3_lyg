@@ -40,20 +40,24 @@ def main(
         max_new_tokens: int = 1024,
         retry: bool = False
 ):
+    # 1、
     placeholder = st.empty()
     with placeholder.container():
+        # streamlit.session_state存储的是原始的数据，而不是显示的内容
         if 'chat_history' not in st.session_state:
             st.session_state.chat_history = []
 
+    # 2、
     if prompt_text == "" and retry == False:
-        print("\n== Clean ==\n")
+        print("\n== Clean History ==\n")
         st.session_state.chat_history = []
         return
-
+    
+    # 3、
     history: list[Conversation] = st.session_state.chat_history
     for conversation in history:
         conversation.show()
-
+    # 4、
     if retry:
         print("\n== Retry ==\n")
         last_user_conversation_idx = None
@@ -64,7 +68,7 @@ def main(
             prompt_text = history[last_user_conversation_idx].content
             del history[last_user_conversation_idx:]
 
-
+    # 5、
     if prompt_text:
         prompt_text = prompt_text.strip()
         append_conversation(Conversation(Role.USER, prompt_text), history)

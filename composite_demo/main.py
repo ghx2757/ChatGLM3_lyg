@@ -1,7 +1,9 @@
 import streamlit as st
+import os
+
 # 设置页面配置：
 st.set_page_config(
-    page_title="元客世界-Demo",# 页面主题
+    page_title="元客世界-Chat",# 页面主题
     page_icon=":elephant:",# robot:（一个机器人图标）
     layout='centered',# centered（居中布局）
     initial_sidebar_state='expanded',# 初始侧边栏状态：expanded（展开状态）
@@ -18,9 +20,8 @@ DEFAULT_SYSTEM_PROMPT = '''
 
 '''.strip()
 
-st.title("✨元客视界🐱‍🏍")
+# st.title("✨元客视界🐱‍🏍" )
 
-# Add your custom text here, with smaller font size
 st.markdown(
     "<sub>智谱AI 公开在线技术文档: https://lslfd0slxc.feishu.cn/wiki/WvQbwIJ9tiPAxGk8ywDck6yfnof </sub> \n\n <sub> 更多 ChatGLM3-6B 的使用方法请参考文档。</sub>",
     unsafe_allow_html=True)
@@ -30,7 +31,16 @@ class Mode(str, Enum):
     CHAT, TOOL, CI = '💬 Chat', '🛠️ Tool', '🧑‍💻 Code Interpreter'
 
 
-with st.sidebar:
+with st.sidebar: # 设置左边栏
+    
+    st.title("✨元客视界:blue[ Chat]")
+    st.image(
+            os.path.join(
+                "img",
+                "滚雪卡通动图.gif"
+            ),
+            use_column_width=True
+        )
     top_p = st.slider(
         'top_p', 0.0, 1.0, 0.8, step=0.01
     )
@@ -46,7 +56,7 @@ with st.sidebar:
 
     cols = st.columns(2)
     export_btn = cols[0]
-    clear_history = cols[1].button("Clear History", use_container_width=True)
+    clear_history = cols[1].button("Clear", use_container_width=True)
     retry = export_btn.button("Retry", use_container_width=True)
 
     system_prompt = st.text_area(
