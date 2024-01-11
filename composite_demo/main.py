@@ -22,18 +22,25 @@ DEFAULT_SYSTEM_PROMPT = '''
 
 # st.title("✨元客视界🐱‍🏍" )
 
-st.markdown(
-    "<sub>智谱AI 公开在线技术文档: https://lslfd0slxc.feishu.cn/wiki/WvQbwIJ9tiPAxGk8ywDck6yfnof </sub> \n\n <sub> 更多 ChatGLM3-6B 的使用方法请参考文档。</sub>",
-    unsafe_allow_html=True)
+# st.markdown(
+#     "<sub>智谱AI 公开在线技术文档: https://www.luster3ds.com/about/ </sub> \n\n <sub> 更多 ChatGLM3-6B 的使用方法请参考文档。</sub>",
+#     unsafe_allow_html=True)
 
 
 class Mode(str, Enum):
     CHAT, TOOL, CI = '💬 Chat', '🛠️ Tool', '🧑‍💻 Code Interpreter'
 
-
-with st.sidebar: # 设置左边栏
-    
-    st.title("✨元客视界:blue[ Chat]")
+system_prompt = st.text_area(
+        label="System Prompt (Only for chat mode)",
+        height=125,
+        value=DEFAULT_SYSTEM_PROMPT,
+    )
+st.toast(
+            f"哔哔哔~欢迎使用 [`元客视界 WebUI`](https://www.luster3ds.com/about/) ! \n\n"
+            f"当前运行的模型`ChatGLM3-6b`, 您可以开始提问了."
+        )
+with st.sidebar: # 设置左边栏    
+    st.title("✨元客视界:blue[ Chat]")    
     st.image(
             os.path.join(
                 "img",
@@ -59,11 +66,7 @@ with st.sidebar: # 设置左边栏
     clear_history = cols[1].button("Clear", use_container_width=True)
     retry = export_btn.button("Retry", use_container_width=True)
 
-    system_prompt = st.text_area(
-        label="System Prompt (Only for chat mode)",
-        height=500,
-        value=DEFAULT_SYSTEM_PROMPT,
-    )
+    
 
 prompt_text = st.chat_input(
     'Chat with 元客世界!',

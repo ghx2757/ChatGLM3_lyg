@@ -528,9 +528,9 @@ if __name__ == "__main__":
                 trust_remote_code=True,
                 device_map="auto"
             ).eval())
-    # load Embedding
-    embedding_model = SentenceTransformer(EMBEDDING_PATH, device="cuda")
-    uvicorn.run(app, host='0.0.0.0', port=8000, workers=1)
+    # # load Embedding
+    # embedding_model = SentenceTransformer(EMBEDDING_PATH, device="cuda")
+    # uvicorn.run(app, host='0.0.0.0', port=8000, workers=1)
 
     model = model.to(DEVICE).eval() if 'cuda' in DEVICE else model.float().to(DEVICE).eval()
 
