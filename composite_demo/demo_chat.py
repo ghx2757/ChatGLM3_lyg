@@ -21,7 +21,7 @@ def count_time(start, out_path, prompt_text, output_text):
         f.write('\n')
     print(msg)
     
-# Append a conversation into history, while show it in a new markdown block
+# 添加当前会话到历史记录中(这里面是包含标识符的)
 def append_conversation(
         conversation: Conversation,
         history: list[Conversation],
@@ -30,7 +30,7 @@ def append_conversation(
     history.append(conversation)
     conversation.show(placeholder)
 
-
+# 主函数
 def main(
         prompt_text: str,
         system_prompt: str,
@@ -40,24 +40,24 @@ def main(
         max_new_tokens: int = 1024,
         retry: bool = False
 ):
-    # 1、
+    # 1、初始化 session_state的缓存
     placeholder = st.empty()
     with placeholder.container():
-        # streamlit.session_state存储的是原始的数据，而不是显示的内容
+        # streamlit.session_state存储的是原始的数据，而不是显示的内容，即存储的history是包含标识符的
         if 'chat_history' not in st.session_state:
             st.session_state.chat_history = []
 
-    # 2、
+    # 2、是否要清除缓存
     if prompt_text == "" and retry == False:
         print("\n== Clean History ==\n")
         st.session_state.chat_history = []
         return
     
-    # 3、
+    # 3、将缓存数据存储到history列表，并逐一展示
     history: list[Conversation] = st.session_state.chat_history
     for conversation in history:
         conversation.show()
-    # 4、
+    # 4、判断 retry 
     if retry:
         print("\n== Retry ==\n")
         last_user_conversation_idx = None
@@ -68,13 +68,13 @@ def main(
             prompt_text = history[last_user_conversation_idx].content
             del history[last_user_conversation_idx:]
 
-    # 5、
+    # 5、获取用户问题并推理
     if prompt_text:
         prompt_text = prompt_text.strip()
         append_conversation(Conversation(Role.USER, prompt_text), history)
         placeholder = st.empty()
-        message_placeholder = placeholder.chat_message(name="assistant", avatar="assistant")
-        markdown_placeholder = message_placeholder.empty()
+        message_placeholder = placeholder.chat_message(name="assistant", avatar="assistant") # 用于显示输出内容
+        markdown_placeholder = message_placeholder.empty() 
 
         output_text = ''
         start = time.time()
@@ -90,7 +90,7 @@ def main(
                 repetition_penalty=repetition_penalty,
         ):
             token = response.token
-            if response.token.special:
+            if response.token.special: # 如果遇到了终止标识符，则打印最终回复，并判断该标识符是否为正常的'<|user|>'
                 print("\n==Output:==\n", output_text)
                 match token.text.strip():
                     case '<|user|>':
@@ -99,12 +99,13 @@ def main(
                         st.error(f'Unexpected special token: {token.text.strip()}')
                         break
             output_text += response.token.text
-            markdown_placeholder.markdown(postprocess_text(output_text + '▌'))
+            markdown_placeholder.markdown(postprocess_text(output_text + '▌')) # 显示在前端页面，效果是流式的
         
         # 计算推理时间
         # out_path = os.path.join(os.getcwd(), 'timeCount.txt')   
         # count_time(start, out_path, prompt_text, output_text)
 
+        # 显示完并将大模型的回复加到历史记录中
         append_conversation(Conversation(
             Role.ASSISTANT,
             postprocess_text(output_text),

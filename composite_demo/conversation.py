@@ -55,9 +55,10 @@ class Conversation:
     tool: str | None = None
     image: Image | None = None
 
+    # 打印--根据不同的角色有不同的返回
     def __str__(self) -> str:
         print(self.role, self.content, self.tool)
-        match self.role:
+        match self.role: 
             case Role.SYSTEM | Role.USER | Role.ASSISTANT | Role.OBSERVATION:
                 return f'{self.role}\n{self.content}'
             case Role.TOOL:
@@ -65,7 +66,7 @@ class Conversation:
             case Role.INTERPRETER:
                 return f'{self.role}interpreter\n{self.content}'
 
-    # Human readable format
+    # 用于前端页面显示每一步的信息
     def get_text(self) -> str:
         text = postprocess_text(self.content)
         match self.role.value:
@@ -77,9 +78,9 @@ class Conversation:
                 text = f'Observation:\n```\n{text}\n```'
         return text
     
-    # Display as a markdown block
+    # 显示的时候不需要展示各种标识符
     def show(self, placeholder: DeltaGenerator | None=None) -> str:
-        if placeholder:
+        if placeholder: # 如果有指定角色框，就用指定的拉~
             message = placeholder
         else:
             message = self.role.get_message()
@@ -87,8 +88,9 @@ class Conversation:
             message.image(self.image)
         else:# 没图显示text
             text = self.get_text()
-            message.markdown(text)
+            message.markdown(text) 
 
+# 用于准备提示模板
 def preprocess_text(
     system: str | None,
     tools: list[dict] | None,

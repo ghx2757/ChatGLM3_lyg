@@ -39,7 +39,7 @@ class Client(Protocol):
                         ) -> Iterable[TextGenerationStreamResponse]:
         ...
 
-
+# 最后的推理部分代码，涉及到底层模型输入部分需要深入理解
 def stream_chat(
         self, tokenizer, query: str, # 这里的self传入的是modle，我推测
         history: list[tuple[str, str]] = None,
@@ -61,7 +61,6 @@ def stream_chat(
                 scores.zero_()
                 scores[..., 5] = 5e4
             return scores
-
     if history is None:
         history = []
 
@@ -75,6 +74,10 @@ def stream_chat(
     # 三个控制生成的结束token对应ID
     eos_token_id = [tokenizer.eos_token_id, tokenizer.get_command("<|user|>"),
                     tokenizer.get_command("<|observation|>")]
+    for eos in eos_token_id:
+        print(f"\033[32meos_token:{tokenizer.decode(eos)}\033[0m")
+    
+    # 超参
     gen_kwargs = {"max_new_tokens": max_new_tokens,
                   "do_sample": do_sample,
                   "top_p": top_p,
@@ -91,17 +94,17 @@ def stream_chat(
     else:
         inputs = tokenizer.build_chat_input(query, role=role)
 
-    print(f"\033[32mclient文件中--inputs：\n{inputs}\033[0m")
+    print(f"\033[32m模型最终输入：\n{inputs}\033[0m")
 
-    inputs = inputs.to(self.device)
+    inputs = inputs.to(self.device) # 将输入数据放到gpu或者cpu上
     # 根据past_key_values来整理一下attention_mask
     if past_key_values is not None:
-        past_length = past_key_values[0][0].shape[0]
+        past_length = past_key_values[0][0].shape[0] # 获取过去内容的长度
         if self.transformer.pre_seq_len is not None:
-            past_length -= self.transformer.pre_seq_len
-        inputs.position_ids += past_length
+            past_length -= self.transformer.pre_seq_len # 是否有pre_seq_len限制，有的话进行调整
+        inputs.position_ids += past_length # 当前问题其实位置
         attention_mask = inputs.attention_mask
-        attention_mask = torch.cat((attention_mask.new_ones(1, past_length), attention_mask), dim=1)
+        attention_mask = torch.cat((attention_mask.new_ones(1, past_length), attention_mask), dim=1) # 将past_key_values对应的位置设置mask不需要再计算了，因为有保存
         inputs['attention_mask'] = attention_mask
     history.append({"role": role, "content": query})
     input_sequence_length = inputs['input_ids'].shape[1]
@@ -117,20 +120,20 @@ def stream_chat(
             input_sequence_length, self.config.seq_length
         ), history
         return
-
+    # 推理
     for outputs in self.stream_generate(**inputs, past_key_values=past_key_values,
                                         eos_token_id=eos_token_id, return_past_key_values=return_past_key_values,
                                         **gen_kwargs):
         if return_past_key_values:
             outputs, past_key_values = outputs
-        outputs = outputs.tolist()[0][len(inputs["input_ids"][0]):]
-        response = tokenizer.decode(outputs)
+        outputs = outputs.tolist()[0][len(inputs["input_ids"][0]):] # 这行代码结合模型的最终输入那块看，好理解
+        response = tokenizer.decode(outputs) # 解码，就是从词表中读取
         if response and response[-1] != "�":
             new_history = history
             if return_past_key_values:
                 yield response, new_history, past_key_values
             else:
-                yield response, new_history
+                yield response, new_history # 流式返回结果和新的history，我看到后续的代码没需要这个history
 
 
 class HFClient(Client):
@@ -174,6 +177,7 @@ class HFClient(Client):
             history: list[Conversation],
             **parameters: Any
     ) -> Iterable[TextGenerationStreamResponse]:
+        # 1、 从新维护一个历史记录
         chat_history = [{
             'role': 'system',
             'content': system if not tools else TOOL_PROMPT,
@@ -187,16 +191,17 @@ class HFClient(Client):
                 'role': str(conversation.role).removeprefix('<|').removesuffix('|>'),
                 'content': conversation.content,
             })
-
+        # 2、获取当前用户问题 和 标签
         query = history[-1].content
         role = str(history[-1].role).removeprefix('<|').removesuffix('|>')
+        # 3、推理
         text = ''
         for new_text, _ in stream_chat(
                 self.model,
                 self.tokenizer,
                 query,
                 chat_history,
-                role,
+                role, # 角色
                 **parameters,
         ):
             word = new_text.removeprefix(text)

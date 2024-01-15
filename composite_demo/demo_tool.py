@@ -69,10 +69,12 @@ def main(
         truncate_length: int = 1024,
         retry: bool = False
 ):
+    # 调试单个工具的那个提醒
     manual_mode = st.toggle('Manual mode',
                             help='Define your tools in YAML format. You need to supply tool call results manually.'
                             )
 
+    # 1、获取工具列表（自定义输入 或者 工具注册）
     if manual_mode:
         with st.expander('Tools'):
             tools = st.text_area(
@@ -86,7 +88,8 @@ def main(
             st.error('YAML format error in tools definition')
     else:
         tools = get_tools()
-
+    
+    # 2、 获取历史工具、执行工具和会话信息
     if 'tool_history' not in st.session_state:
         st.session_state.tool_history = []
     if 'calling_tool' not in st.session_state:
@@ -94,16 +97,17 @@ def main(
 
     if 'chat_history' not in st.session_state:
         st.session_state.chat_history = []
-
+    # 3、 判断是否清除历史会话信息
     if prompt_text == "" and retry == False:
         print("\n== Clean ==\n")
         st.session_state.chat_history = []
         return
-
+    
+    # 4、从缓存中加载历史信息
     history: list[Conversation] = st.session_state.chat_history
     for conversation in history:
         conversation.show()
-
+    # 5、判断 retry
     if retry:
         print("\n== Retry ==\n")
         last_user_conversation_idx = None
@@ -114,6 +118,7 @@ def main(
             prompt_text = history[last_user_conversation_idx].content
             del history[last_user_conversation_idx:]
 
+    # 6、推理大流程
     if prompt_text:
         prompt_text = prompt_text.strip()
         role = st.session_state.calling_tool and Role.OBSERVATION or Role.USER
@@ -124,7 +129,7 @@ def main(
         message_placeholder = placeholder.chat_message(name="assistant", avatar="assistant")
         markdown_placeholder = message_placeholder.empty()
 
-        for _ in range(5):
+        for _ in range(5): # 最多执行5次
             output_text = ''
             for response in client.generate_stream(
                     system=None,
@@ -141,13 +146,14 @@ def main(
                 if response.token.special:
                     print("\n==Output:==\n", output_text)
                     match token.text.strip():
-                        case '<|user|>':
+                        # 如果将主动权交给了用户，则将会话内容更新到历史记录中
+                        case '<|user|>': 
                             append_conversation(Conversation(
                                 Role.ASSISTANT,
                                 postprocess_text(output_text),
                             ), history, markdown_placeholder)
                             return
-                        # Initiate tool call
+                        # 
                         case '<|assistant|>':
                             append_conversation(Conversation(
                                 Role.ASSISTANT,
@@ -158,8 +164,8 @@ def main(
                             markdown_placeholder = message_placeholder.empty()
                             continue
                         case '<|observation|>':
-                            tool, *call_args_text = output_text.strip().split('\n')
-                            call_args_text = '\n'.join(call_args_text)
+                            tool, *call_args_text = output_text.strip().split('\n') # 取得工具名字
+                            call_args_text = '\n'.join(call_args_text) # 取得参数表
 
                             append_conversation(Conversation(
                                 Role.TOOL,

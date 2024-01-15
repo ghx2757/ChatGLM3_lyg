@@ -230,6 +230,7 @@ def main(
         truncate_length: int = 1024,
         retry: bool = False
 ):
+    # 1 历史信息获取
     if 'ci_history' not in st.session_state:
         st.session_state.ci_history = []
 
@@ -243,6 +244,7 @@ def main(
     for conversation in history:
         conversation.show()
 
+    # 执行用户命令
     if retry:
         print("\n== Retry ==\n")
         last_user_conversation_idx = None
@@ -252,6 +254,7 @@ def main(
         if last_user_conversation_idx is not None:
             prompt_text = history[last_user_conversation_idx].content
             del history[last_user_conversation_idx:]
+    # 获取prompt
     if prompt_text:
         prompt_text = prompt_text.strip()
         role = Role.USER
