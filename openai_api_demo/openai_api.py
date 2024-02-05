@@ -496,8 +496,8 @@ def contains_custom_function(value: str) -> bool:
 if __name__ == "__main__":
     model_path = MODEL_PATH
     tokenizer_path = TOKENIZER_PATH
-    # pt_checkpoint = '/home/lyg/code/ChatGLM3_lyg/finetune_chatmodel_demo/output/data_hsw_m-20231212-122142-128-2e-2'
-    pt_checkpoint = None
+    pt_checkpoint = '/home/lyg/code/ChatGLM3_lyg/finetune_chatmodel_demo/output/data_hsw_m-20231212-122142-128-2e-2'
+    # pt_checkpoint = None
 
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)    
     if pt_checkpoint is not None and os.path.exists(pt_checkpoint):

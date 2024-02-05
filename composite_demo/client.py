@@ -18,8 +18,8 @@ TOOL_PROMPT = 'Answer the following questions as best as you can. You have acces
 MODEL_PATH = os.environ.get('MODEL_PATH', 'THUDM/chatglm3-6b')
 print(f'MODEL_PATH==>{MODEL_PATH}')
 
-PT_PATH = os.environ.get('PT_PATH', None)
-# PT_PATH = '/home/lyg/code/ChatGLM3_lyg/finetune_chatmodel_demo/output/data_hsw_m-20231212-122142-128-2e-2'
+# PT_PATH = os.environ.get('PT_PATH', None)
+PT_PATH = '/home/lyg/code/ChatGLM3_lyg/finetune_chatmodel_demo/output/data_hsw_m-20231212-122142-128-2e-2'
 PRE_SEQ_LEN = int(os.environ.get("PRE_SEQ_LEN", 128))
 TOKENIZER_PATH = os.environ.get("TOKENIZER_PATH", MODEL_PATH)
 

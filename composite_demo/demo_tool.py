@@ -160,7 +160,7 @@ def main(
                                 postprocess_text(output_text),
                             ), history, markdown_placeholder)
                             output_text = ''
-                            message_placeholder = placeholder.chat_message(name="tool", avatar="assistant")
+                            message_placeholder = placeholder.chat_message(name="tool", avatar="assistant") # 更新当前会话角色
                             markdown_placeholder = message_placeholder.empty()
                             continue
                         case '<|observation|>':
